@@ -1,0 +1,52 @@
+# php.ini for WordPress or Laravel
+asp_tags=Disabled
+display_errors=Disabled
+max_execution_time=180
+max_input_time=600
+max_input_vars=5000
+memory_limit=256M
+post_max_size=256M
+session.gc_maxlifetime=1440
+session.save_path=
+upload_max_filesize=128M
+zib.output_compression=Disabled
+
+# Option: Tuning php-fpm (/etc/php-fpm.d/www.conf)
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 3
+pm.min_spare_servers = 2
+pm.max_spare_servers = 4
+pm.max_requests = 200
+
+# Symlink to WordPress (Use full path: /var/www)
+- ln -s /var/www/foo /var/www/bar
+
+# Clear Container Log on MacOS
+- docker inspect CONTAINER_ID --format='{{.LogPath}}'
+- nc -U ~/Library/Containers/com.docker.docker/Data/debug-shell.sock
+- echo -n > /path/to/container/logs
+- exit
+
+# Docker Compose Microsoft SQL Server ( docker-compose-microsoft.yml)
+services:
+  sql-server:
+    container_name: mssql
+    image: mcr.microsoft.com/mssql/server
+    hostname: MicrosoftSQL
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=secret
+    volumes:
+      - ./data/mssql:/var/opt/mssql/data
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+# START: COMPOSE_PROJECT_NAME=microsoft docker-compose -f docker-compose-microsoft.yml up -d
+# STOP : COMPOSE_PROJECT_NAME=microsoft docker-compose -f docker-compose-microsoft.yml down -v
