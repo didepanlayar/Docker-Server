@@ -87,7 +87,7 @@ Build image with `Dockerfile`.
     Accessing the containers.
 
     ```sh
-    docker-compose exec workspace bash
+    docker-compose exec workspace sh
     ```
 
 5. Stop and clear services.

@@ -11,20 +11,32 @@ services:
         - https_proxy
         - no_proxy
     image: workspace:${PHP_VERSION}
+    ports:
+      - "${WORKSPACE_SSH_PORT}:22"
+      - "${WORKSPACE_BROWSERSYNC_HOST_PORT}:3000"
+      - "${WORKSPACE_BROWSERSYNC_UI_HOST_PORT}:3001"
+      - "${WORKSPACE_VUE_CLI_SERVE_HOST_PORT}:8080"
+      - "${WORKSPACE_VUE_CLI_UI_HOST_PORT}:8000"
+      - "${WORKSPACE_ANGULAR_CLI_SERVE_HOST_PORT}:4200"
+      - "${WORKSPACE_VITE_PORT}:5173"
     volumes:
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
+      - docker-in-docker:/certs/client
     extra_hosts:
       - "dockerhost:${DOCKER_HOST_IP}"
     tty: true
     environment:
+      - DOCKER_HOST=tcp://docker-in-docker:2376
       - DOCKER_TLS_VERIFY=1
+      - DOCKER_TLS_CERTDIR=/certs
+      - DOCKER_CERT_PATH=/certs/client
       - FAKETIME=${PHP_FPM_FAKETIME}
       - TZ=${TIMEZONE}
     networks:
       - backend
       - frontend
-    depends_on:
-      - php-fpm
+    links:
+      - docker-in-docker
 
   ### NGINX Server #########################################
   nginx:
@@ -71,16 +83,24 @@ services:
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
       - ./php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
       - ./public/:/usr/share/nginx/html/
+      - docker-in-docker:/certs/client
     expose:
       - "9000"
     extra_hosts:
       - "dockerhost:${DOCKER_HOST_IP}"
     environment:
+      - DOCKER_HOST=tcp://docker-in-docker:2376
       - DOCKER_TLS_VERIFY=1
+      - DOCKER_TLS_CERTDIR=/certs
+      - DOCKER_CERT_PATH=/certs/client
       - FAKETIME=${PHP_FPM_FAKETIME}
       - TZ=${TIMEZONE}
     networks:
       - backend
+    depends_on:
+      - workspace
+    links:
+      - docker-in-docker
 
   ### MySQL ################################################
   mysql:
@@ -138,12 +158,29 @@ services:
     networks:
       - backend
 
+  ### Docker-in-Docker #####################################
+  docker-in-docker:
+    restart: always
+    image: docker:20.10-dind
+    environment:
+      DOCKER_TLS_SAN: DNS:docker-in-docker
+    privileged: true
+    volumes:
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+      - docker-in-docker:/certs/client
+    expose:
+      - 2375
+    networks:
+      - backend
+
 volumes:
   mysql:
     driver: ${VOLUMES_DRIVER}
   redis:
     driver: ${VOLUMES_DRIVER}
   phpmyadmin:
+    driver: ${VOLUMES_DRIVER}
+  docker-in-docker:
     driver: ${VOLUMES_DRIVER}
 
 networks:

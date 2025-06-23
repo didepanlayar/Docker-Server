@@ -22,13 +22,36 @@ ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/do
 
 RUN chmod +x /usr/local/bin/install-php-extensions && \
     install-php-extensions \
+        ast \
+        bcmath \
+        bz2 \
+        calendar \
+        curl \
+        exif \
+        fileinfo \
+        ftp \
         gd \
+        gettext \
+        imagick \
+        imap \
         intl \
+        ldap \
         mbstring \
+        mcrypt \
+        memcached \
+        mongodb \
+        mysqli \
+        opcache \
         pcntl \
+        pdo \
         pdo_mysql \
         redis \
-        zip \
-        && rm /usr/local/bin/install-php-extensions
+        soap \
+        sodium \
+        sysvsem \
+        sysvshm \
+        xmlrpc \
+        xsl \
+        zip
 
 WORKDIR /var/www

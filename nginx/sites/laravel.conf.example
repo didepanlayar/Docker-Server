@@ -1,7 +1,7 @@
 #server {
 #    listen 80;
-#    server_name laravel.com.co;
-#    return 301 https://laravel.com.co$request_uri;
+#    server_name laravel.test;
+#    return 301 https://$host$request_uri;
 #}
 
 server {
@@ -26,7 +26,7 @@ server {
     location ~ \.php$ {
         try_files $uri /index.php =404;
         # php74-fpm, php80-fpm, php81-fpm, etc
-        fastcgi_pass php74-fpm:9000;
+        fastcgi_pass php-fpm:9000;
         fastcgi_index index.php;
         fastcgi_buffers 16 16k;
         fastcgi_buffer_size 32k;
