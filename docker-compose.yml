@@ -160,7 +160,7 @@ services:
 
   ### Docker-in-Docker #####################################
   docker-in-docker:
-    restart: always
+    container_name: docker-in-docker
     image: docker:20.10-dind
     environment:
       DOCKER_TLS_SAN: DNS:docker-in-docker
