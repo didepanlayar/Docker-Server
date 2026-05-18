@@ -11,6 +11,7 @@ HOST_PROJECT_PATH=$(pwd)
 
 # Project directory, if Docker is in /Users/<username/Website/Docker then project is in /Users/<username/Website/Project/
 # Your app must be in /Users/<username/Website/Project/{App_1, App_2, etc...}.
+# Just replace path/to/project with Website/Project/
 RELATIVE_PATH="${HOST_PROJECT_PATH#*path/to/project/}"
 
 ESCAPED_ARGS=""

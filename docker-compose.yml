@@ -130,7 +130,9 @@ services:
     build: ./phpmyadmin
     image: phpmyadmin:${PMA_VERSION}
     environment:
-      - PMA_ARBITRARY=1
+      - PMA_ARBITRARY=0
+      - PMA_HOST=mysql
+      - PMA_PORT=${MYSQL_PORT}
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
