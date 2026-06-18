@@ -11,6 +11,7 @@ services:
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/sites:/etc/nginx/conf.d:ro
+      - ./public:/usr/share/nginx/html:ro
     environment:
       - TZ=${TIMEZONE}
     networks:
@@ -28,7 +29,8 @@ services:
     volumes:
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
       - ./php-fpm/local-dev.ini:/usr/local/etc/php/conf.d/local-dev.ini:ro
-      - ./php-fpm/xlaravel.pool.conf:/usr/local/etc/php-fpm.d/zz-docker.conf:ro
+      - ./php-fpm/xlaravel.pool.conf:/usr/local/etc/php-fpm.d/xlaravel.pool.conf:ro
+      - ./public:/usr/share/nginx/html:ro
     expose:
       - "9000"
     environment:
