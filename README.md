@@ -10,7 +10,7 @@
 </p>
 
 ## Description
-Docker Environment for Development or Production using Nginx, Multiple versions of PHP-FPM and modern website development with JavaScript.
+A high-performance, lightweight Docker environment optimized for local development. Engineered to be resource-efficient (RAM/CPU friendly) and to eliminate I/O bottlenecks commonly found on macOS.
 
 This project is inspired by [Laradock](https://github.com/laradock/laradock) which is aimed at creating an application development environment based on WordPress, Laravel, and other frameworks.
 
@@ -21,80 +21,89 @@ All requisites should be available for your distribution. The most important are
 3. [Docker Compose](https://docs.docker.com/compose/install)
 
 ## Overview
-All images are used:
-| Name          | Tag      |
-| ------------- | -------- |
-| Nginx         | latest   |
-| MySQL         | 8.4      |
-| PHP-FPM       | 7.4, 8.2 |
-| PHP-MyAdmin   | latest   |
-| Redis         | latest   |
-| Workspace     | 7.4, 8.2 |
+We moved away from "fat-container" architecture to a modular, lightweight approach:
+| Name     | Image Base         | Role                   |
+| -------- | ------------------ | ---------------------- |
+| Nginx    | nginx:alpine       | Web Server             |
+| MySQL    | mysql:8.4          | Database               |
+| PHP-FPM  | php:alpine         | Backend Logic          |
+| Node-CLI | node:alpine        | Frontend (Vite/NextJS) |
+| Redis    | redis:alpine       | Caching                |
+| Adminer  | adminer:standalone | DB Management          |
 
+## Structure
 Place your Project outside this folder.
 
 ```sh
-.
-├── Docker
-├── Project A
-├── Project B
-├── Project C
-└── Etc
+Development/
+ ├── www/        # All your projects (Laravel, NextJS, etc.)
+ └── Docker/     # This repository (Configuration only)
 ```
-
-Then you can add or change the nginx configuration in `nginx/sites/default.conf` and add your local domain to `/etc/hosts`.
 
 ## Environment
-To run this project you need to add following environment variables to your `.env` file.
+Copy the example file and adjust your settings:
 
+```sh
+cp .env.example .env
 ```
-# Application
-COMPOSE_PROJECT_NAME=docker
 
-# MySQL
-MYSQL_DATABASE=default
-MYSQL_USER=default
-MYSQL_PASSWORD=secret
-MYSQL_PORT=3306
-MYSQL_ROOT_PASSWORD=root
-```
+Note: Ensure `APP_CODE_PATH_HOST` in your `.env` points correctly to your `../www` directory.
 
 ## Build
 Build image with `Dockerfile`.
 
-1. Copy and modify the `.env` file.
+1. Build and Start
 
     ```sh
-    cp .env.example .env
+    docker compose up -d --build
     ```
 
-    Modify the `.env` file with the following [Environment](#environment) above.
+2. Accessing Containers
 
-2. Build image.
+    To run commands inside the PHP environment:
 
     ```sh
-    docker-compose build --no-cache --force-rm
+    docker compose exec php-fpm sh
     ```
 
-3. Start services.
+    To run commands inside the Node environment:
 
     ```sh
-    docker-compose up -d
+    docker compose exec node-cli sh
     ```
 
-4. Create or clone your Project.
+2. Start and Stop
 
-    Accessing the containers.
+    Start the service, run the command:
 
     ```sh
-    docker-compose exec workspace sh
+    docker compose start
     ```
 
-5. Stop and clear services.
+    Stop the service, run the command:
 
     ```sh
-    docker-compose down -v
+    docker compose stop
     ```
+
+    If you want to delete a container to make it lighter but still have data, just use the command:
+
+    ```sh
+    docker compose down
+    ```
+
+    Never run docker `compose down -v`. The `-v` (volume) flag will delete the contents of your mysql data folder.
+
+3. Database Access
+
+    Access Adminer via `http://localhost:8081`.
+
+## Networking & Hosts
+For proper API communication, add your local domains to `/etc/hosts`:
+
+```
+127.0.0.1 api.domain.test app.domain.test
+```
 
 ## Tech Stack
 - Git
