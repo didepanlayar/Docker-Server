@@ -51,6 +51,9 @@ services:
       - "5173:5173" # Port Vite
     environment:
       - TZ=${TIMEZONE}
+    extra_hosts:
+      - "api.domain.test:host-gateway"
+      - "app.domain.test:host-gateway"
     networks:
       - app-network
 
