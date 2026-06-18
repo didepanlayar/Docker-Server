@@ -1,114 +1,60 @@
 services:
 
-  ### WORKSPACE ############################################
-  workspace:
-    container_name: workspace
-    build:
-      context: ./workspace
-      args:
-        - DOCKER_PHP_VERSION=${PHP_VERSION}
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: workspace:${PHP_VERSION}
-    ports:
-      - "${WORKSPACE_SSH_PORT}:22"
-      - "${WORKSPACE_BROWSERSYNC_HOST_PORT}:3000"
-      - "${WORKSPACE_BROWSERSYNC_UI_HOST_PORT}:3001"
-      - "${WORKSPACE_VUE_CLI_SERVE_HOST_PORT}:8080"
-      - "${WORKSPACE_VUE_CLI_UI_HOST_PORT}:8000"
-      - "${WORKSPACE_ANGULAR_CLI_SERVE_HOST_PORT}:4200"
-      - "${WORKSPACE_VITE_PORT}:5173"
-    volumes:
-      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
-      - docker-in-docker:/certs/client
-    extra_hosts:
-      - "dockerhost:${DOCKER_HOST_IP}"
-    tty: true
-    environment:
-      - DOCKER_HOST=tcp://docker-in-docker:2376
-      - DOCKER_TLS_VERIFY=1
-      - DOCKER_TLS_CERTDIR=/certs
-      - DOCKER_CERT_PATH=/certs/client
-      - FAKETIME=${PHP_FPM_FAKETIME}
-      - TZ=${TIMEZONE}
-    networks:
-      - backend
-      - frontend
-    links:
-      - docker-in-docker
-
-  ### NGINX Server #########################################
+  ### NGINX Server ###
   nginx:
     container_name: nginx
-    build:
-      context: ./nginx
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: nginx:${NGINX_VERSION}
+    image: nginx:alpine
     ports:
-      - "${NGINX_HOST_HTTP_PORT}:80"
-      - "${NGINX_HOST_HTTPS_PORT}:443"
+      - "80:80"
+      - "443:443"
     volumes:
-      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
-      - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
-      - ${NGINX_SITES_PATH}:/etc/nginx/sites-available
-      - ${NGINX_SSL_PATH}:/etc/nginx/ssl
-      - ./public/:/usr/share/nginx/html/
-    working_dir: ${APP_CODE_PATH_CONTAINER}
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites:/etc/nginx/conf.d:ro
     environment:
       - TZ=${TIMEZONE}
     networks:
-      - frontend
-      - backend
+      - app-network
     depends_on:
       - php-fpm
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
-  ### PHP-FPM ##############################################
+  ### PHP-FPM ###
   php-fpm:
     container_name: php-fpm
     build:
       context: ./php-fpm
       args:
-        - DOCKER_PHP_VERSION=${PHP_VERSION}
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: php-fpm:${PHP_VERSION}
+        - PHP_VERSION=${PHP_VERSION}
     volumes:
-      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}${APP_CODE_CONTAINER_FLAG}
-      - ./php-fpm/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini
-      - ./public/:/usr/share/nginx/html/
-      - docker-in-docker:/certs/client
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+      - ./php-fpm/local-dev.ini:/usr/local/etc/php/conf.d/local-dev.ini:ro
+      - ./php-fpm/xlaravel.pool.conf:/usr/local/etc/php-fpm.d/zz-docker.conf:ro
     expose:
       - "9000"
-    extra_hosts:
-      - "dockerhost:${DOCKER_HOST_IP}"
     environment:
-      - DOCKER_HOST=tcp://docker-in-docker:2376
-      - DOCKER_TLS_VERIFY=1
-      - DOCKER_TLS_CERTDIR=/certs
-      - DOCKER_CERT_PATH=/certs/client
-      - FAKETIME=${PHP_FPM_FAKETIME}
       - TZ=${TIMEZONE}
     networks:
-      - backend
-    depends_on:
-      - workspace
-    links:
-      - docker-in-docker
+      - app-network
 
-  ### MySQL ################################################
+  ### NODE CLI ###
+  node-cli:
+    container_name: node-cli
+    image: node:${NODE_VERSION}-alpine
+    working_dir: ${APP_CODE_PATH_CONTAINER}
+    volumes:
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+    tty: true
+    ports:
+      - "3000:3000" # Port NextJS/Vue
+      - "5173:5173" # Port Vite
+    environment:
+      - TZ=${TIMEZONE}
+    networks:
+      - app-network
+
+  ### MySQL ###
   mysql:
     container_name: mysql
-    build:
-      context: ./mysql
-      args:
-        - MYSQL_VERSION=${MYSQL_VERSION}
     image: mysql:${MYSQL_VERSION}
     environment:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
@@ -117,76 +63,44 @@ services:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - TZ=${TIMEZONE}
     ports:
-      - "${MYSQL_PORT}:3306"
+      - "3306:3306"
     volumes:
-      - ${DATA_PATH_HOST}/mysql:/var/lib/mysql
-      - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+      - mysql-data:/var/lib/mysql
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
     networks:
-      - backend
+      - app-network
 
-  ### phpMyAdmin ###########################################
-  phpmyadmin:
-    container_name: phpmyadmin
-    build: ./phpmyadmin
-    image: phpmyadmin:${PMA_VERSION}
+  ### Adminer ###
+  adminer:
+    container_name: adminer
+    image: adminer:standalone
     environment:
-      - PMA_ARBITRARY=0
-      - PMA_HOST=mysql
-      - PMA_PORT=${MYSQL_PORT}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MAX_EXECUTION_TIME=${PMA_MAX_EXECUTION_TIME}
-      - MEMORY_LIMIT=${PMA_MEMORY_LIMIT}
-      - UPLOAD_LIMIT=${PMA_UPLOAD_LIMIT}
+      - ADMINER_DEFAULT_SERVER=mysql
     ports:
-      - "${PMA_PORT}:80"
+      - "8081:8080"
     networks:
-      - frontend
-      - backend
+      - app-network
     depends_on:
-      - "${PMA_DB_ENGINE}"
+      - mysql
 
-  ### Redis ################################################
+  ### Redis ###
   redis:
     container_name: redis
-    build: ./redis
-    image: redis:${REDIS_VERSION}
-    volumes:
-      - ${DATA_PATH_HOST}/redis:/data
-    command: --requirepass ${REDIS_PASSWORD}
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 64mb --maxmemory-policy allkeys-lru
     ports:
-      - "${REDIS_PORT}:6379"
-    networks:
-      - backend
-
-  ### Docker-in-Docker #####################################
-  docker-in-docker:
-    container_name: docker-in-docker
-    image: docker:20.10-dind
-    environment:
-      DOCKER_TLS_SAN: DNS:docker-in-docker
-    privileged: true
+      - "6379:6379"
     volumes:
-      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
-      - docker-in-docker:/certs/client
-    expose:
-      - 2375
+      - redis-data:/data
     networks:
-      - backend
+      - app-network
 
 volumes:
-  mysql:
-    driver: ${VOLUMES_DRIVER}
-  redis:
-    driver: ${VOLUMES_DRIVER}
-  phpmyadmin:
-    driver: ${VOLUMES_DRIVER}
-  docker-in-docker:
-    driver: ${VOLUMES_DRIVER}
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
 
 networks:
-  frontend:
-    driver: ${NETWORKS_DRIVER}
-  backend:
-    driver: ${NETWORKS_DRIVER}
+  app-network:
+    driver: bridge
